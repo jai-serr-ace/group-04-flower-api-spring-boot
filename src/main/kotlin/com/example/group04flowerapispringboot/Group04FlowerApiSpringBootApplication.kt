@@ -2,7 +2,6 @@ package com.example.group04flowerapispringboot
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-
 @SpringBootApplication
 class Group04FlowerApiSpringBootApplication
 
