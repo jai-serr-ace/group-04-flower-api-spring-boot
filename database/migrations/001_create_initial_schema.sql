@@ -1,6 +1,6 @@
 -- :c: lowpolysurf 2026
 
-CERATE TABLE users (
+CREATE TABLE users (
     user_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -41,12 +41,12 @@ CREATE TABLE fq_links (
 
     CONSTRAINT fk_fq_links_quote
         FOREIGN KEY (quote_id)
-        REFERENCES quote(quote_id)
+        REFERENCES quotes(quote_id)
         ON DELETE CASCADE
 );
 
 CREATE TABLE images (
-    img_id BIGINT GENERATED AS IDENTITY PRIMARY KEY,
+    img_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     flower_id BIGINT NOT NULL,
     img_link TEXT NOT NULL,
 
@@ -65,7 +65,7 @@ CREATE TABLE tags (
     CONSTRAINT fk_tags_flower
         FOREIGN KEY (flower_id)
         REFERENCES flowers(flower_id)
-        ON DLETE CASCADE 
+        ON DELETE CASCADE 
 );
 
 
