@@ -38,3 +38,7 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### OS ###
+.DS_Store
+Thumbs.db
