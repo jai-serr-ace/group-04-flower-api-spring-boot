@@ -39,6 +39,9 @@ out/
 ### Kotlin ###
 .kotlin
 
+### OS ###
+.DS_Store
+Thumbs.db
 ### .env ###
 node_modules/
 .env
