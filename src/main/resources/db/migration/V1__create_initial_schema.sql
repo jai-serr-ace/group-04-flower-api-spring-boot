@@ -19,7 +19,7 @@ CREATE TABLE flowers (
     CONSTRAINT fk_flowers_user
         FOREIGN KEY (user_id)
         REFERENCES users(user_id)
-        ON DELETE SET NULL
+        ON DELETE CASCADE
 );
 
 CREATE TABLE quotes (

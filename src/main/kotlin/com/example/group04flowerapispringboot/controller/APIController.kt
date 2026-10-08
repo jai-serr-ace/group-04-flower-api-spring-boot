@@ -1,6 +1,6 @@
-package com.example.group04flowerapispringboot.controllers
+package com.example.group04flowerapispringboot.controller
 
-import com.example.group04flowerapispringboot.models.Default
+import com.example.group04flowerapispringboot.model.Default
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
