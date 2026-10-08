@@ -42,3 +42,7 @@ out/
 ### OS ###
 .DS_Store
 Thumbs.db
+### .env ###
+node_modules/
+.env
+.env.*.local
