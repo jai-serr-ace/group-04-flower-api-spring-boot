@@ -1,9 +1,11 @@
 package com.example.group04flowerapispringboot.repository
 
 import com.example.group04flowerapispringboot.model.Flower
+import com.example.group04flowerapispringboot.model.PageResponse
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.stereotype.Repository
+import kotlin.math.ceil
 
 @Repository
 class FlowerRepository(
@@ -20,8 +22,63 @@ class FlowerRepository(
         )
     }
 
-    fun findAll(): List<Flower> {
-        return jdbcTemplate.query(
+    fun findPage(
+        page: Int,
+        size: Int,
+        name: String?,
+        scientificName: String?,
+        sort: String,
+        direction: String
+    ): PageResponse<Flower> {
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val filters = mutableListOf<String>()
+        val filterParameters = mutableListOf<Any>()
+
+        if (!name.isNullOrBlank()) {
+            filters += "LOWER(name) LIKE LOWER(?)"
+            filterParameters += "%${name.trim()}%"
+        }
+
+        if (!scientificName.isNullOrBlank()) {
+            filters += "LOWER(scientific_name) LIKE LOWER(?)"
+            filterParameters += "%${scientificName.trim()}%"
+        }
+
+        val whereClause = if (filters.isEmpty()) {
+            ""
+        } else {
+            "WHERE ${filters.joinToString(" AND ")}"
+        }
+
+        // Only allow known column names. Never insert the raw query parameter
+        // into SQL, because that would allow SQL injection through `sort`.
+        val sortColumn = when (sort) {
+            "name" -> "name"
+            "scientificName" -> "scientific_name"
+            "userId" -> "user_id"
+            "flowerId" -> "flower_id"
+            else -> "flower_id"
+        }
+
+        val sortDirection = if (direction.equals("asc", ignoreCase = true)) {
+            "ASC"
+        } else {
+            "DESC"
+        }
+
+        val totalItems = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM flowers $whereClause",
+            Long::class.javaObjectType,
+            *filterParameters.toTypedArray()
+        ) ?: 0L
+
+        val offset = safePage * safeSize
+        val queryParameters = filterParameters.toMutableList()
+        queryParameters += safeSize
+        queryParameters += offset
+
+        val items = jdbcTemplate.query(
             """
             SELECT flower_id,
                    scientific_name,
@@ -30,9 +87,26 @@ class FlowerRepository(
                    location_coord,
                    notes
             FROM flowers
-            ORDER BY flower_id DESC
+            $whereClause
+            ORDER BY $sortColumn $sortDirection
+            LIMIT ? OFFSET ?
             """.trimIndent(),
-            flowerMapper
+            flowerMapper,
+            *queryParameters.toTypedArray()
+        )
+
+        val totalPages = if (totalItems == 0L) {
+            0
+        } else {
+            ceil(totalItems.toDouble() / safeSize).toInt()
+        }
+
+        return PageResponse(
+            items = items,
+            page = safePage,
+            size = safeSize,
+            totalItems = totalItems,
+            totalPages = totalPages
         )
     }
 
