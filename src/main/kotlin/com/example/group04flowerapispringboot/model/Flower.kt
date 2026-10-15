@@ -1,9 +1,10 @@
 package com.example.group04flowerapispringboot.model
 
-
 data class Flower(
+    val flowerId: Long,
+    val scientificName: String?,
+    val userId: Long,
     val name: String,
-    val scientificName: String? = null,
-    val locationCoord: String? = null,
-    val notes: String? = null
+    val locationCoord: String?,
+    val notes: String?
 )
