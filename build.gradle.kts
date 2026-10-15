@@ -32,6 +32,15 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // OAuth2 Resource Server support for validating Google ID tokens.
+    // For local tests without Google authentication, comment out the OAuth2 properties
+    // in application.properties; do not disable authentication in a public deployment.
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+
+    // Enables MockMvc JWT tests without contacting Google. These JWTs are test-only mocks,
+    // not real Google credentials.
+    testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 }
 
