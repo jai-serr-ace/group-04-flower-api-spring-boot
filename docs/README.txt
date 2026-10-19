@@ -78,3 +78,39 @@ Spring's explicit SPRING_DATASOURCE_* overrides still take precedence; remove
 those overrides from local run configurations. Never commit .env/.env.local
 or copy their secrets into application-*.properties. Both files are excluded
 from the Docker build context.
+
+RENDER
+
+The render.yaml Blueprint describes the Docker web service. For the existing
+group-04-flower-api-spring-boot service, apply the same settings in its dashboard
+instead of creating a second service. Select this repository and the branch
+containing the current code, Docker runtime, Dockerfile path ./Dockerfile,
+and health check /api/v1/health. Remove any old Docker command override so the
+Dockerfile entrypoint runs the JAR with the deploy profile.
+
+Set SPRING_PROFILES_ACTIVE=deploy and the PG* variables listed above in Render's
+Environment settings. Use database credentials reachable from Render, not
+localhost or Docker's db hostname. GOOGLE_WEB_CLIENT_ID must equal the Android
+app's default_web_client_id (the Google web OAuth client ID). PORT=8080 is
+supported; Render forwards public HTTPS to the container's configured port.
+Keep DEPLOY_MIGRATIONS_ENABLED=false for the existing database. For a new empty
+database, enable it deliberately to create the schema before testing flowers.
+Do not upload .env or put database passwords into render.yaml.
+
+Commit and push these changes, then manually deploy that commit on the existing
+Render service. Confirm the logs show the deploy profile and successful startup.
+Open requests/deployment.http in IntelliJ and run its requests. Health and
+flowers must return 200; auth-debug without a token returns 401; a blank sign-in
+token returns 400. If public routes or the blank-token request return 401, verify
+Render's deployed commit, branch, and environment overrides.
+
+Android uses https://group-04-flower-api-spring-boot.onrender.com/ as its base URL.
+Rebuild/install the app after changing this URL. It needs internet access, with
+no USB connection or adb reverse. If Render is waking an idle service, wait for
+the health request to succeed before testing sign-in.
+
+POST /api/auth/google verifies a Google ID token; it returns subject, issuer,
+audience, email and emailVerified. It does not issue a separate session token.
+Android stores the verified Google ID token and uses it as a bearer token for
+protected routes; expired tokens require a fresh Google sign-in. A failed API
+request must be shown as a failed login, not accepted as an offline test user.

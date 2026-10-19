@@ -1,0 +1,28 @@
+# Existing services can use these same settings in the Render dashboard.
+services:
+  - type: web
+    name: group-04-flower-api-spring-boot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: deploy
+      - key: PORT
+        value: "8080"
+      - key: DEPLOY_MIGRATIONS_ENABLED
+        value: "false"
+      - key: PGHOST
+        sync: false
+      - key: PGPORT
+        sync: false
+      - key: PGDATABASE
+        sync: false
+      - key: PGUSER
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+      - key: GOOGLE_WEB_CLIENT_ID
+        sync: false
