@@ -23,9 +23,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
-    implementation("org.flywaydb:flyway-core")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
@@ -34,8 +35,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // OAuth2 Resource Server support for validating Google ID tokens.
-    // For local tests without Google authentication, comment out the OAuth2 properties
-    // in application.properties; do not disable authentication in a public deployment.
+    // Authentication is configured for both local and deployment profiles.
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // Enables MockMvc JWT tests without contacting Google. These JWTs are test-only mocks,
