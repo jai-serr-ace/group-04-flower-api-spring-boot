@@ -33,6 +33,7 @@ COPY --from=builder /workspace/app/build/libs/*.jar app.jar
 
 # Dynamic port binding (default 8080)
 ENV PORT=8080
+ENV SPRING_PROFILES_ACTIVE=deploy
 EXPOSE 8080
 
 # Launch application

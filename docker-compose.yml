@@ -2,13 +2,13 @@ services:
   db:
     image: postgres:16-alpine
     container_name: flower-api-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: flowerdb
       POSTGRES_USER: floweruser
       POSTGRES_PASSWORD: flowerpassword
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,12 +27,18 @@ services:
       db:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/flowerdb
-      SPRING_DATASOURCE_USERNAME: floweruser
-      SPRING_DATASOURCE_PASSWORD: flowerpassword
+      SPRING_PROFILES_ACTIVE: local
+      LOCAL_DB_HOST: db
+      LOCAL_DB_PORT: 5432
+      LOCAL_DB_NAME: flowerdb
+      LOCAL_DB_USER: floweruser
+      LOCAL_DB_PASSWORD: flowerpassword
+      LOCAL_DB_SSLMODE: disable
+      LOCAL_MIGRATIONS_ENABLED: "true"
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:-local-testing-client-id}
       PORT: 8080
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
 volumes:
   postgres_data:
