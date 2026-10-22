@@ -1,6 +1,6 @@
 package com.example.group04flowerapispringboot.controllers
 
-import com.example.group04flowerapispringboot.SecurityConfig
+import com.example.group04flowerapispringboot.config.SecurityConfig
 import com.example.group04flowerapispringboot.controller.GoogleAuthController
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -35,6 +35,9 @@ class GoogleAuthControllerTest {
     @MockitoBean
     lateinit var jwtDecoder: JwtDecoder
 
+    @MockitoBean
+    lateinit var users: com.example.group04flowerapispringboot.service.CurrentUserService
+
     @Test
     fun `body token is validated without a bearer header or csrf token`() {
         val jwt = Jwt.withTokenValue("google-id-token")
@@ -46,6 +49,9 @@ class GoogleAuthControllerTest {
             .claim("email_verified", true)
             .build()
         given(jwtDecoder.decode("google-id-token")).willReturn(jwt)
+        given(users.register(jwt)).willReturn(
+            com.example.group04flowerapispringboot.model.User(7, "google-user", "user@example.com", "google-user-id", false)
+        )
 
         mockMvc.perform(post("/api/auth/google")
             .contentType(MediaType.APPLICATION_JSON)
@@ -91,10 +97,10 @@ class GoogleAuthControllerTest {
     }
 
     @Test
-    fun `csrf protection remains enabled for other post routes`() {
+    fun `other post routes require a bearer token`() {
         mockMvc.perform(post("/api/v1/flowers")
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
-            .andExpect(status().isForbidden)
+            .andExpect(status().isUnauthorized)
     }
 }

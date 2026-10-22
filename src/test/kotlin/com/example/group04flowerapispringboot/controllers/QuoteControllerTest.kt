@@ -18,10 +18,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(QuoteController::class)
-class QuoteControllerTest {
+class QuoteControllerTest : AuthenticatedControllerTest() {
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
 
     @MockitoBean
     lateinit var quotes: QuoteRepository

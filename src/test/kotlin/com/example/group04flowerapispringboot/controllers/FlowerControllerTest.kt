@@ -21,10 +21,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(FlowerController::class)
-class FlowerControllerTest {
+class FlowerControllerTest : AuthenticatedControllerTest() {
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
 
     @MockitoBean
     lateinit var flowers: FlowerRepository
@@ -190,14 +188,19 @@ class FlowerControllerTest {
     }
 
     @Test
-    fun `createFlower returns 400 when userId is missing`() {
-        mockMvc.perform(
-            post(base)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Rose"}""")
-        )
-            .andExpect(status().isBadRequest)
+    fun `createFlower derives owner when userId is missing`() {
+        val saved = rose.copy(scientificName = null, locationCoord = null, notes = null)
+        given(flowers.create(saved.copy(flowerId = 0))).willReturn(saved)
+        mockMvc.perform(post(base).contentType(MediaType.APPLICATION_JSON).content("""{"name":"Rose"}"""))
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.userId").value(7))
+    }
 
+    @Test
+    fun `createFlower rejects another user as owner`() {
+        mockMvc.perform(post(base).contentType(MediaType.APPLICATION_JSON)
+            .content("""{"name":"Rose","userId":99}"""))
+            .andExpect(status().isForbidden)
         verifyNoInteractions(flowers)
     }
 
@@ -242,17 +245,17 @@ class FlowerControllerTest {
     }
     @Test
     fun `deleteFlower returns 204 when deleted`() {
-        given(flowers.delete(1L)).willReturn(true)
+        given(flowers.delete(1L, 7L)).willReturn(true)
 
         mockMvc.perform(delete("$base/1"))
             .andExpect(status().isNoContent)
 
-        verify(flowers).delete(1L)
+        verify(flowers).delete(1L, 7L)
     }
 
     @Test
     fun `deleteFlower returns 404 when the flower does not exist`() {
-        given(flowers.delete(99L)).willReturn(false)
+        given(flowers.delete(99L, 7L)).willReturn(false)
 
         mockMvc.perform(delete("$base/99"))
             .andExpect(status().isNotFound)

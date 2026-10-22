@@ -1,4 +1,7 @@
-@baseUrl = https://group-04-flower-api-spring-boot.onrender.com
+# Replace with the URL assigned to the NEW Render service.
+@baseUrl = https://your-new-service.onrender.com
+# Local alternative: http://localhost:8080
+# Define idToken in git-ignored http-client.private.env.json, not this file.
 
 ### Public database health: expect 200 with database=connected
 GET {{baseUrl}}/api/v1/health
@@ -20,3 +23,18 @@ Content-Type: application/json
 
 # For real sign-in, Android sends a fresh Google ID token in the JSON body.
 # Protected requests use Authorization: Bearer <that same Google ID token>.
+
+
+### Real Google sign-in: expect 200 and a registered userId
+POST {{baseUrl}}/api/auth/google
+Content-Type: application/json
+
+{"idToken":"{{idToken}}"}
+
+### Current user: expect 200 after sign-in (no X-User-Id header)
+GET {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{idToken}}
+
+### Protected quote retrieval: expect 200 with a valid token
+GET {{baseUrl}}/api/v1/quotes
+Authorization: Bearer {{idToken}}

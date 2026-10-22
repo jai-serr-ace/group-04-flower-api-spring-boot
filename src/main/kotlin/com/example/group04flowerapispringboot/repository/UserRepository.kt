@@ -26,4 +26,19 @@ class UserRepository(private val jdbcTemplate: JdbcTemplate) {
         mapper,
         userId
     ).firstOrNull()
+
+    fun findByProviderId(providerId: String): User? = jdbcTemplate.query(
+        "SELECT user_id, username, email, provider_id, is_admin FROM users WHERE provider_id = ?",
+        mapper, providerId
+    ).firstOrNull()
+
+    fun registerGoogleUser(subject: String, email: String): User = jdbcTemplate.queryForObject(
+        """
+        INSERT INTO users (username, email, provider_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT (provider_id) DO UPDATE SET provider_id = EXCLUDED.provider_id
+        RETURNING user_id, username, email, provider_id, is_admin
+        """.trimIndent(),
+        mapper, "google_$subject", email, subject
+    )
 }

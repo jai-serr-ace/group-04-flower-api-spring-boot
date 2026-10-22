@@ -7,11 +7,12 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import com.example.group04flowerapispringboot.service.CurrentUserService
 
 data class GoogleAuthRequest(val idToken: String)
 
 @RestController
-class GoogleAuthController(private val jwtDecoder: JwtDecoder) {
+class GoogleAuthController(private val jwtDecoder: JwtDecoder, private val users: CurrentUserService) {
     @PostMapping("/api/auth/google")
     fun verify(@RequestBody request: GoogleAuthRequest): Map<String, Any?> {
         if (request.idToken.isBlank()) {
@@ -25,7 +26,9 @@ class GoogleAuthController(private val jwtDecoder: JwtDecoder) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google ID token")
         }
 
+        val user = users.register(jwt)
         return mapOf(
+            "userId" to user.userId,
             "subject" to jwt.subject,
             "issuer" to jwt.issuer.toString(),
             "audience" to jwt.audience,

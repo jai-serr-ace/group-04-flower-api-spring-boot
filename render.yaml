@@ -1,7 +1,8 @@
-# Existing services can use these same settings in the Render dashboard.
+# Create a NEW web service. Supply database settings and the Google web client ID
+# in the Blueprint creation form. No .env file is uploaded.
 services:
   - type: web
-    name: group-04-flower-api-spring-boot
+    name: flower-api
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
@@ -12,8 +13,9 @@ services:
         value: deploy
       - key: PORT
         value: "8080"
+      # true for a new/Flyway-managed DB; false for an existing unmanaged schema.
       - key: DEPLOY_MIGRATIONS_ENABLED
-        value: "false"
+        sync: false
       - key: PGHOST
         sync: false
       - key: PGPORT

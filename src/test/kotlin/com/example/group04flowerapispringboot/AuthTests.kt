@@ -17,14 +17,14 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class AuthTests(@Autowired val mockMvc: MockMvc) {
     @Test
     fun `request without token is rejected`() {
-        mockMvc.perform(get("/api/flowers"))
+        mockMvc.perform(get("/api/auth-debug"))
             .andExpect(status().isUnauthorized)
     }
 
     @Test
     fun `request with mocked Google token is accepted`() {
         mockMvc.perform(
-            get("/api/flowers")
+            get("/api/auth-debug")
                 .with(
                     jwt().jwt { token ->
                         token

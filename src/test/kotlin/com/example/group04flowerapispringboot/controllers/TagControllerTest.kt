@@ -18,13 +18,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(TagController::class)
-class TagControllerTest {
+class TagControllerTest : AuthenticatedControllerTest() {
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
 
     @MockitoBean
     lateinit var tags: TagRepository
+
+    @MockitoBean lateinit var flowers: com.example.group04flowerapispringboot.repository.FlowerRepository
+
+    @org.junit.jupiter.api.BeforeEach
+    fun ownFlower() {
+        given(flowers.findById(1L)).willReturn(
+            com.example.group04flowerapispringboot.model.Flower(1, null, 7, "Rose", null, null)
+        )
+    }
 
     private val base = "/api/v1/tags"
 
@@ -85,5 +92,16 @@ class TagControllerTest {
 
         mockMvc.perform(delete("$base/1/ghost"))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `cannot tag another users flower`() {
+        given(flowers.findById(1L)).willReturn(
+            com.example.group04flowerapispringboot.model.Flower(1, null, 99, "Rose", null, null)
+        )
+        mockMvc.perform(post("$base/1").contentType(MediaType.APPLICATION_JSON)
+            .content("""{"userTag":"red"}"""))
+            .andExpect(status().isNotFound)
+        verifyNoInteractions(tags)
     }
 }

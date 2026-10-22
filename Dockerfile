@@ -14,11 +14,11 @@ COPY settings.gradle.kts .
 RUN chmod +x gradlew
 
 # Pre-fetch dependencies (optional cache layer)
-RUN ./gradlew dependencies --no-daemon || true
+RUN ./gradlew dependencies --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx384m -XX:MaxMetaspaceSize=256m"
 
 # Copy source code and build the executable jar
 COPY src src
-RUN ./gradlew bootJar --no-daemon -x test
+RUN ./gradlew bootJar --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx384m -XX:MaxMetaspaceSize=256m" -Pkotlin.compiler.execution.strategy=in-process -x test
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre
@@ -37,4 +37,4 @@ ENV SPRING_PROFILES_ACTIVE=deploy
 EXPOSE 8080
 
 # Launch application
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=60.0", "-XX:+UseSerialGC", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]

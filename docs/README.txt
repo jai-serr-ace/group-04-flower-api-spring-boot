@@ -1,116 +1,150 @@
-Local testing and deployment
-============================
+Local testing and a new Render deployment
+========================================
 
-One Gradle build produces the same JAR for both environments. Spring profiles
-select the configuration at runtime:
+One Gradle build produces the same JAR for both environments. Runtime profiles:
   src/main/resources/application-local.properties
   src/main/resources/application-deploy.properties
 
-LOCAL TESTING (default when running from IntelliJ or Gradle)
+LOCAL TESTING
 
-Normal IntelliJ runs load the existing .env and use its working Railway PG*
-connection, just as before the profile split. No Docker setup is required.
-Migrations are disabled by default so startup does not change that schema.
-Run Group04FlowerApiSpringBootApplication or ./gradlew bootRun.
-
-OPTIONAL: SEPARATE LOCAL DATABASE
-
-1. Start a separate local PostgreSQL database:
-     docker compose --env-file .env.local.example up -d db
-   It listens at localhost:5433 and stores data in the postgres_data volume.
-   Flyway creates the tables when the local app starts for the first time.
-
-2. Copy .env.local.example to .env.local to enable the isolated database.
-   .env.local is git-ignored and uses Java properties syntax (no quoted values).
-   Leave LOCAL_DB_HOST=localhost and LOCAL_DB_PORT=5433 for the database above.
-   If you change database credentials or the host port, also update the db
-   service in docker-compose.yml to match.
-   Remove .env.local to return to the Railway connection in .env.
-
-3. Run Group04FlowerApiSpringBootApplication in IntelliJ, or:
-     ./gradlew bootRun --args='--spring.profiles.active=local'
-   Clear any old deployment environment variables from your IntelliJ run config.
-   The default port is 8080; use PORT=8081 in .env.local if 8080 is occupied.
-
-4. Check http://localhost:8080/api/v1/health and /api/v1/flowers.
-   A new database contains no flowers until you add data.
-
-To run both the app and database in Docker instead:
+For an isolated database and API:
   docker compose --env-file .env.local.example up --build -d
-The API container explicitly selects local and connects to the db service.
-For real Google sign-in, use a valid GOOGLE_WEB_CLIENT_ID in a git-ignored
-local env file and pass that file with --env-file when starting Compose.
+  http://localhost:8080/api/v1/health
+  http://localhost:8080/api/v1/flowers
 
-Authentication remains enabled in both environments. Public flower GETs and
-health checks need no token; protected endpoints still need a Google ID token.
-The local placeholder client ID is only suitable for testing public routes
-and tests that mock JWTs.
+For IntelliJ or Gradle, start only the database:
+  docker compose --env-file .env.local.example up -d db
+Copy .env.local.example to .env.local, then run the application or ./gradlew bootRun.
+The database listens on localhost:5433. The API listens on port 8080.
+The local profile imports .env and .env.local as Java properties (no quotes).
+LOCAL_DB_* overrides select the isolated database; without them, PG* selects
+an external database. Keep migrations disabled for an existing unmanaged schema.
+A new database starts empty. The API returns JSON, with no website interface.
 
-DEPLOYMENT (Railway or another host)
+NEW RENDER WEB SERVICE
 
-Build once:
-  ./gradlew bootJar
+1. Choose the database before creating the web service.
+   PostgreSQL must be reachable from Render and support TLS. Either provision a
+   new empty PostgreSQL database or deliberately reuse your existing database.
+   A new web service does not imply a new database. This Blueprint creates only
+   the web service, not a database. Never use localhost or Docker's db hostname
+   as PGHOST in Render. For Render Postgres, use the database host and credentials
+   for the same region; for another provider, use its reachable/public endpoint.
 
-Set the following in the host's environment/secret settings:
-  SPRING_PROFILES_ACTIVE=deploy
-  PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
-  GOOGLE_WEB_CLIENT_ID
-  PORT (optional; defaults to 8080)
+2. Commit and push the reviewed changes to the repository branch to deploy.
+   Create a NEW Blueprint from render.yaml, or create a Docker Web Service with
+   Dockerfile path ./Dockerfile and Docker context . and copy these settings.
+   The Blueprint service is named flower-api. Choose a unique name if occupied.
+   Leave the Docker command override empty so the image entrypoint is used.
 
-The Docker image selects deploy by default. For a JAR deployment, set the
-profile as above or pass --spring.profiles.active=deploy to java -jar.
-Use .env.example as a variable reference; it contains no real credentials.
-The deploy profile requires PostgreSQL TLS and has no credential defaults.
-It does not import .env or .env.local. The local profile does load .env.
-DATABASE_URL is not used by this JDBC setup;
-PGPASSWORD is the authoritative database password.
+3. Set the following in Render Environment settings (not in Git or this chat):
+     SPRING_PROFILES_ACTIVE=deploy
+     PORT=8080
+     PGHOST=<database host>
+     PGPORT=<database port, usually 5432>
+     PGDATABASE=<database name>
+     PGUSER=<database user>
+     PGPASSWORD=<database password>
+     GOOGLE_WEB_CLIENT_ID=<Google OAuth WEB client ID>
+     DEPLOY_MIGRATIONS_ENABLED=true OR false (see next step)
+   render.yaml uses sync: false to request these values on Blueprint creation.
+   Later Blueprint updates do not re-prompt; change values in the dashboard.
+   .env.example is a reference only. The deploy profile does not import .env
+   or .env.local, and Docker excludes them. DATABASE_URL, NODE_ENV and AUTH0_*
+   are not used. Remove stale SPRING_DATASOURCE_* environment overrides because
+   they can bypass the intended PG* settings. Do not combine deploy and local.
 
-DEPLOY_MIGRATIONS_ENABLED defaults to false for the existing Railway schema.
-For a new empty deployment database, explicitly set it to true to initialize
-the schema. For an existing database without Flyway history, review and
-baseline the schema separately before enabling migrations; do not enable
-automatic baselining blindly.
+4. For a NEW EMPTY database set DEPLOY_MIGRATIONS_ENABLED=true. Flyway creates
+   the schema and records V1 in flyway_schema_history. Leave it true on later
+   deployments of that Flyway-managed database so future migrations can run.
+   For an EXISTING database without Flyway history, use false until its schema
+   has been reviewed and baselined separately. Do not enable automatic
+   baselining or point migrations at an unreviewed shared database.
+   Missing required deployment variables fail startup without logging secrets.
 
-Normal local runs use .env's PG* variables. Optional LOCAL_DB_* settings
-override them when using a separate database. Enable LOCAL_MIGRATIONS_ENABLED
-only for that isolated database. Do not select both local and deploy together.
-Spring's explicit SPRING_DATASOURCE_* overrides still take precedence; remove
-those overrides from local run configurations. Never commit .env/.env.local
-or copy their secrets into application-*.properties. Both files are excluded
-from the Docker build context.
+5. Use /api/v1/health as the Render health check. Successful startup should
+   report the deploy profile, database connection, and (for a new database)
+   a successful Flyway migration. Check the deployed commit/branch in Render.
+   /api/v1/health must return 200 with database=connected.
+   /actuator/health must return 200 with status=UP.
+   /api/v1/flowers must return 200, initially with items=[].
+   A database failure prevents the service from passing its health check.
+   Connection pooling is limited to 5 connections per application instance.
 
-RENDER
+6. Change the Android base URL to the NEW https://<service>.onrender.com/ URL
+   and rebuild/install the app. Use HTTPS on Render and HTTP for local testing.
+   Android emulator access to the host is http://10.0.2.2:8080/; a physical device
+   needs a reachable host address or adb reverse. localhost on a phone refers
+   to the phone itself. Configure Android cleartext HTTP only for local debug.
 
-The render.yaml Blueprint describes the Docker web service. For the existing
-group-04-flower-api-spring-boot service, apply the same settings in its dashboard
-instead of creating a second service. Select this repository and the branch
-containing the current code, Docker runtime, Dockerfile path ./Dockerfile,
-and health check /api/v1/health. Remove any old Docker command override so the
-Dockerfile entrypoint runs the JAR with the deploy profile.
+GOOGLE SIGN-IN AND API BEHAVIOR
 
-Set SPRING_PROFILES_ACTIVE=deploy and the PG* variables listed above in Render's
-Environment settings. Use database credentials reachable from Render, not
-localhost or Docker's db hostname. GOOGLE_WEB_CLIENT_ID must equal the Android
-app's default_web_client_id (the Google web OAuth client ID). PORT=8080 is
-supported; Render forwards public HTTPS to the container's configured port.
-Keep DEPLOY_MIGRATIONS_ENABLED=false for the existing database. For a new empty
-database, enable it deliberately to create the schema before testing flowers.
-Do not upload .env or put database passwords into render.yaml.
+GOOGLE_WEB_CLIENT_ID must match Android's default_web_client_id, the Google web
+OAuth client ID used as the ID-token audience. Android also needs its correct
+package name and signing certificate fingerprints configured in Google.
+No Google client secret is required by this backend. Tokens must be fresh;
+use real Google sign-in to verify signature, audience, issuer and expiry.
 
-Commit and push these changes, then manually deploy that commit on the existing
-Render service. Confirm the logs show the deploy profile and successful startup.
-Open requests/deployment.http in IntelliJ and run its requests. Health and
-flowers must return 200; auth-debug without a token returns 401; a blank sign-in
-token returns 400. If public routes or the blank-token request return 401, verify
-Render's deployed commit, branch, and environment overrides.
+POST /api/auth/google with {"idToken":"<fresh Google ID token>"} verifies the
+Google token and registers a non-admin database user on first sign-in using
+its verified email and stable Google subject (stored as users.provider_id).
+The response includes userId, subject, issuer, audience, email, emailVerified.
+An existing different identity with the same email returns 409; accounts are
+never linked by email alone. Existing legacy users need reviewed subject
+mapping/account linking before they can sign in as those accounts.
 
-Android uses https://group-04-flower-api-spring-boot.onrender.com/ as its base URL.
-Rebuild/install the app after changing this URL. It needs internet access, with
-no USB connection or adb reverse. If Render is waking an idle service, wait for
-the health request to succeed before testing sign-in.
+The endpoint does not issue a separate session token. Android sends the same
+Google ID token as Authorization: Bearer <token> on every protected request.
+Expired tokens require a fresh Google sign-in. The API is stateless and does
+not authenticate with cookies or X-User-Id. No CSRF token is needed.
 
-POST /api/auth/google verifies a Google ID token; it returns subject, issuer,
-audience, email and emailVerified. It does not issue a separate session token.
-Android stores the verified Google ID token and uses it as a bearer token for
-protected routes; expired tokens require a fresh Google sign-in. A failed API
-request must be shown as a failed login, not accepted as an offline test user.
+GET /api/v1/users/me resolves the verified Google subject, ignoring X-User-Id.
+It returns 404 if sign-in has not registered that identity yet.
+Flower creation derives userId from the signed-in user. userId is now optional
+in request bodies; an explicitly different userId returns 403. Flower updates,
+deletes and tag changes require ownership; missing or unowned flowers return
+404. Clients cannot transfer ownership by changing the request's userId.
+
+Public: GET /, /api/v1/health, /actuator/health, /api/v1/flowers and
+/api/v1/flowers/{id}. Public flower responses include notes and location;
+keep that product behavior in mind before storing private information.
+Protected: quotes, users/me, auth-debug, health subroutes, and all data writes.
+Any authenticated user may add shared quotes. No admin-only moderation or
+rate limiting is implemented. CORS is not configured for browser frontends;
+the Android client does not need CORS. Revisit this if adding a web frontend.
+
+VERIFICATION
+
+  ./gradlew test bootJar
+
+Tests use isolated settings and mocked Google JWTs, never your .env secrets.
+Controller/security tests cover authentication, user-header spoofing, bearer
+writes without CSRF, and ownership. To additionally run real PostgreSQL/TLS
+migration, registration and ownership tests, use a DISPOSABLE EMPTY database:
+  FLOWER_POSTGRES_TEST=true FLOWER_TEST_DB_HOST=127.0.0.1 \
+    FLOWER_TEST_DB_PORT=5434 FLOWER_TEST_DB_NAME=flower_deploy_test \
+    FLOWER_TEST_DB_USER=floweruser FLOWER_TEST_DB_PASSWORD=<password> \
+    ./gradlew test --rerun-tasks
+The database must support TLS. Never target a shared/production database here.
+These tests run migrations and roll back their test data.
+
+requests/deployment.http contains public and authenticated smoke checks.
+Set baseUrl to the new Render URL. Define idToken in a LOCAL, git-ignored
+http-client.private.env.json for protected checks. Never commit a real token.
+Real Google sign-in and Render network/database reachability must still be
+verified after deployment; mocked JWTs do not prove Google client setup.
+
+HOSTING CONSIDERATIONS
+
+The Blueprint currently selects a free web instance. Free Render web services
+sleep after inactivity; account for startup delays in the Android app. Render
+free Postgres databases expire, so choose an appropriate database plan and
+backup strategy for persistent data. Review provider limits before deployment.
+Docker builds use one Gradle worker and bounded memory; Java runtime reserves
+headroom for native memory on small instances. If Docker Desktop is killed for
+memory on your computer, inspect available RAM rather than changing database
+credentials. Render build capacity must also be sufficient for Gradle.
+
+Render references:
+  https://render.com/docs/blueprint-spec#prompting-for-secret-values
+  https://render.com/docs/free

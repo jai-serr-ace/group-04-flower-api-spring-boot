@@ -153,29 +153,31 @@ class FlowerRepository(
     }
 
     fun update(flowerId: Long, flower: Flower): Flower? {
-        jdbcTemplate.update(
+        val changed = jdbcTemplate.update(
             """
             UPDATE flowers
             SET scientific_name = ?,
                 name = ?,
                 location_coord = ?,
                 notes = ?
-            WHERE flower_id = ?
+            WHERE flower_id = ? AND user_id = ?
             """.trimIndent(),
             flower.scientificName,
             flower.name,
             flower.locationCoord,
             flower.notes,
-            flowerId
+            flowerId,
+            flower.userId
         )
 
-        return findById(flowerId)
+        return if (changed > 0) findById(flowerId) else null
     }
 
-    fun delete(flowerId: Long): Boolean {
+    fun delete(flowerId: Long, userId: Long): Boolean {
         return jdbcTemplate.update(
-            "DELETE FROM flowers WHERE flower_id = ?",
-            flowerId
+            "DELETE FROM flowers WHERE flower_id = ? AND user_id = ?",
+            flowerId,
+            userId
         ) > 0
     }
 }
