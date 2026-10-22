@@ -1,4 +1,4 @@
-package com.example.group04flowerapispringboot
+package com.example.group04flowerapispringboot.config
 
 
 import org.springframework.context.annotation.Bean
@@ -25,6 +25,7 @@ class SecurityConfig {
                 it.requestMatchers(HttpMethod.POST, "/api/auth/google").permitAll()
                 it.requestMatchers("/", "/api/v1/health", "/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/v1/flowers", "/api/v1/flowers/*").permitAll()
+                it.requestMatchers("/error").permitAll()
                 it.anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt { } }
